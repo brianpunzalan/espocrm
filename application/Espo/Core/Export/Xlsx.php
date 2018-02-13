@@ -87,6 +87,20 @@ class Xlsx extends \Espo\Core\Injectable
         }
     }
 
+    public function filterFieldList($entityType, $fieldList, $exportAllFields)
+    {
+        if ($exportAllFields) {
+            foreach ($fieldList as $i => $field) {
+                $type = $this->getMetadata()->get(['entityDefs', $entityType, 'fields', $field, 'type']);
+                if (in_array($type, ['linkMultiple', 'attachmentMultiple'])) {
+                    unset($fieldList[$i]);
+                }
+            }
+        }
+
+        return array_values($fieldList);
+    }
+
     public function addAdditionalAttributes($entityType, &$attributeList, $fieldList)
     {
         $linkList = [];
@@ -420,6 +434,36 @@ class Xlsx extends \Espo\Core\Injectable
                         $value .= $row[$name.'Country'];
                     }
                     $sheet->setCellValue("$col$rowNumber", $value);
+                } else if ($type == 'duration') {
+                    if (!empty($row[$name])) {
+                        $seconds = intval($row[$name]);
+
+                        $days = intval(floor($seconds / 86400));
+                        $seconds = $seconds - $days * 86400;
+                        $hours = intval(floor($seconds / 3600));
+                        $seconds = $seconds - $hours * 3600;
+                        $minutes = intval(floor($seconds / 60));
+
+                        $value = '';
+                        if ($days) {
+                            $value .= (string) $days . $this->getInjection('language')->translate('d', 'durationUnits');
+                            if ($minutes || $hours) {
+                                $value .= ' ';
+                            }
+                        }
+                        if ($hours) {
+                            $value .= (string) $hours . $this->getInjection('language')->translate('h', 'durationUnits');
+                            if ($minutes) {
+                                $value .= ' ';
+                            }
+                        }
+                        if ($minutes) {
+                            $value .= (string) $minutes . $this->getInjection('language')->translate('m', 'durationUnits');
+                        }
+
+                        $sheet->setCellValue("$col$rowNumber", $value);
+                    }
+
                 } else {
                     if (array_key_exists($name, $row)) {
                         $sheet->setCellValue("$col$rowNumber", $row[$name]);
